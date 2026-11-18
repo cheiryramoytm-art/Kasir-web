@@ -275,6 +275,9 @@ body.wide #lokpop{left:calc(var(--sideW,220px) + 30%)}
 .lqr-t ol{list-style:none;display:grid;gap:10px;margin-bottom:14px}
 .lqr-t li{display:flex;gap:10px;align-items:center;font-size:16px}
 .lqr-t li i{flex:0 0 auto;width:28px;height:28px;border-radius:50%;background:var(--g);color:#fff;font-style:normal;font-weight:700;display:grid;place-items:center;font-size:14px}
+.tcd{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);z-index:9997;display:flex;align-items:center;gap:8px;background:rgba(20,38,26,.92);color:#fff;border-radius:22px;padding:6px 6px 6px 14px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap}
+.tcd b{font-weight:600}
+.tcd button{border:0;border-radius:16px;background:rgba(255,255,255,.16);color:#fff;font:600 12.5px Inter,sans-serif;padding:7px 11px}
 .ocr-it{border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fff}
 .ocr-it.off{background:#f6f7f5;opacity:.85}
 .ocr-h{display:flex;gap:10px;align-items:flex-start}
@@ -1441,6 +1444,8 @@ setting(){
   <div class="fld"><label>Kecepatan bicara</label><select id="s_vrate">${[[0.8,'Pelan'],[0.9,'Agak pelan'],[1,'Normal'],[1.15,'Agak cepat'],[1.3,'Cepat']].map(([v,l])=>`<option value="${v}" ${+vCfg().rate===v?'selected':''}>${l}</option>`).join('')}</select></div>
   <label class="chk" style="margin-top:12px"><input type="checkbox" id="s_vkaching" ${vCfg().kaching?'checked':''}> Bunyi uang masuk (ka-ching) saat pembayaran berhasil</label>
   <label class="chk" style="margin-top:12px"><input type="checkbox" id="s_vauto" ${vCfg().autoThanks?'checked':''}> Ucapkan "Terima kasih" setelah pembayaran berhasil</label>
+  <div class="fld" style="margin-top:10px"><label>Bunyi "Terima kasih" setelah berapa detik?</label><select id="s_vdelay">${[[0,'Langsung'],[2,'2 detik'],[3,'3 detik'],[4,'4 detik'],[5,'5 detik'],[7,'7 detik'],[10,'10 detik'],[15,'15 detik']].map(([n,l])=>`<option value="${n}" ${+vCfg().delay===n?'selected':''}>${l}</option>`).join('')}</select>
+  <div class="sub" style="margin-top:4px">Pakai keyboard: tekan <b>Spasi</b> sekali = mulai hitung mundur, tekan lagi = langsung bunyi. Kalau pilih "Langsung", Spasi hitung mundur 3 detik.</div></div>
   <div class="g2" style="margin-top:12px"><button class="btn o" data-act="testVoice">🔊 Coba sapaan</button><button class="btn o" data-act="testPayVoice">💰 Coba suara bayar</button><button class="btn" data-act="saveVoice">Simpan suara</button></div>
   <div class="sub" style="margin-top:6px">Pagi 04.00–10.59 · Siang 11.00–14.59 · Sore 15.00–17.59 · Malam 18.00–03.59</div>
   ${mode!=='cloud'?cloudSettingsHTML():''}
@@ -1911,7 +1916,7 @@ function sampleTrx(){const last=Object.values(S.trx).filter(x=>x.status!=='batal
   return{no:1,waktu:Date.now(),kasir:U.user?U.user.nama:'Cheiry',pelanggan:'',items:[{nama:'Abacel 100ml',qty:2,harga:40000},{nama:'Sprayer 16L',qty:1,harga:350000}],sub:430000,disc:0,tax:0,total:430000,bayar:450000,kembali:20000,metode:'Cash',piutang:false}}
 
 // ---------- suara sapaan (TTS) ----------
-const vCfg=()=>({src:'rec',greet:'Selamat {waktu}, selamat berbelanja di {toko}',thanks:'Terima kasih sudah berbelanja. Tuhan memberkati',rate:1,autoThanks:true,kaching:true,...((v=>v&&!v.v2?{...v,autoThanks:true,kaching:true}:v)(S.meta.voice||{}))});
+const vCfg=()=>({src:'rec',greet:'Selamat {waktu}, selamat berbelanja di {toko}',thanks:'Terima kasih sudah berbelanja. Tuhan memberkati',rate:1,autoThanks:true,kaching:true,delay:0,...((v=>v&&!v.v2?{...v,autoThanks:true,kaching:true}:v)(S.meta.voice||{}))});
 function waktuNow(){const h=new Date().getHours();return h>=4&&h<11?'pagi':h>=11&&h<15?'siang':h>=15&&h<18?'sore':'malam'}
 const waktuIcon=w=>({pagi:'🌅',siang:'☀️',sore:'🌇',malam:'🌙'}[w]);
 const fillV=t=>String(t||'').replace(/\{waktu\}/g,waktuNow()).replace(/\{toko\}/g,S.meta.nama||'').replace(/\{kasir\}/g,U.user?U.user.nama:'');
@@ -1940,8 +1945,15 @@ async function say(kind){const key=kind==='thanks'?'sayThanks':'sayGreet';const 
 let chimeBusy=false;
 async function payChime(withThanks){const v=vCfg();if(chimeBusy)return;chimeBusy=true;
   try{if(v.kaching){try{await playClip('kaching',null)}catch(e){}}
-    if(withThanks&&v.autoThanks){await new Promise(r=>setTimeout(r,v.kaching?150:300));await say('thanks')}}
+    if(withThanks&&v.autoThanks){if(+v.delay>0){thanksStart(+v.delay)}else{await new Promise(r=>setTimeout(r,v.kaching?150:300));await say('thanks')}}}
   finally{chimeBusy=false}}
+/* hitung mundur "terima kasih" (spasi: mulai / langsung ucapkan) */
+const TC={t:null,end:0,el:null};
+function thanksStop(){clearInterval(TC.t);TC.t=null;TC.end=0;if(TC.el){TC.el.remove();TC.el=null}}
+function thanksNow(){thanksStop();say('thanks')}
+function thanksStart(sec){thanksStop();if(!(sec>0)){say('thanks');return}TC.end=Date.now()+sec*1000;
+  const el=document.createElement('div');el.className='tcd';el.innerHTML='<span>🔊</span><b></b><button data-act="tcNow">Sekarang</button><button data-act="tcStop">✕</button>';document.body.appendChild(el);TC.el=el;
+  const up=()=>{const left=Math.ceil((TC.end-Date.now())/1000);if(left<=0){thanksNow();return}el.querySelector('b').textContent='Terima kasih dalam '+left+' dtk · Spasi = sekarang'};up();TC.t=setInterval(up,200)}
 let speakingKey=null;
 function setSpeaking(k){speakingKey=k;document.querySelectorAll('.gbtn').forEach(b=>b.classList.toggle('speaking',!!k&&b.dataset.act===k))}
 async function speak(text,key){
@@ -2440,8 +2452,14 @@ async function renderInvoice(list){
   F(800,22);T('🔒 INVOICE TERVERIFIKASI',M+34,y+54,'left',C.dark);
   F(500,20);const note=wrap('Invoice ini dilindungi kode verifikasi. Untuk cek keasliannya, tunjukkan QR ini ke toko '+(S.meta.nama||'Bangun Tani Bersama')+'. Invoice yang diubah atau diedit tidak berlaku.',qx-M-80);note.forEach((l,j)=>T(l,M+34,y+92+j*28,'left',C.mu));
   const ky=y+92+note.length*28+22;F(600,18);T('Kode verifikasi',M+34,ky,'left',C.mu);F(800,34);T(code,M+34,ky+42,'left',C.dark);
-  const kn=(multi?(U.user&&U.user.nama):t0.kasir)||'Kasir';F(700,20);const kl=kn+' · Kasir';T(kl,M+34,y+vh-30,'left',C.ink);
-  y+=vh+40;
+  const kn=(multi?(U.user&&U.user.nama):t0.kasir)||'Kasir';F(600,19);T('Kasir: '+kn,M+34,y+vh-30,'left',C.mu);
+  y+=vh+28;
+  { // blok owner
+    const oh=150,on=S.meta.owner||'Meylan Kumendong';RR(M,y,W-2*M,oh,30,C.dark);
+    x.beginPath();x.arc(M+34+48,y+oh/2,48,0,Math.PI*2);x.fillStyle=C.amber;x.fill();F(800,44);T(on.trim()[0].toUpperCase(),M+34+48,y+oh/2+16,'center',C.dark);
+    F(500,21);T('Hormat kami,',M+164,y+52,'left','#cfe0d2');F(800,40);fit(on,W-2*M-420,800,40,26);T(on,M+164,y+102,'left',C.cream);
+    const nw=Math.min(x.measureText(on).width,W-2*M-420);F(800,20);const cw=x.measureText('OWNER').width+40;RR(M+164+nw+18,y+72,cw,40,20,C.amber);T('OWNER',M+164+nw+18+cw/2,y+99,'center',C.dark);
+    F(600,19);T(S.meta.nama||'Bangun Tani Bersama',W-M-34,y+oh/2+8,'right','#cfe0d2');y+=oh+40}
   F(700,30);T('Terima kasih',M,y+10,'left',C.dark);F(500,21);T('atas kepercayaan Anda. Tuhan memberkati 🌱',M,y+44,'left',C.mu);
   let fy=y+82;if(c.footer){F(500,19);wrap(c.footer,W-2*M).forEach(l=>{T(l,M,fy,'left',C.mu);fy+=28})}
   y=fy+20;x.fillStyle=C.dark;x.fillRect(0,y,W,96);F(600,20);T((S.meta.nama||'')+'  ·  Bangun Desa, Maju Pertanian, Bersama Kita Sejahtera',W/2,y+56,'center','#cfe0d2');y+=96;
@@ -2711,7 +2729,7 @@ const A={
   wxRefresh(){wxFetch(true)},
   sayGreet(){say('greet')},
   sayThanks(){say('thanks')},
-  async saveVoice(){S.meta.voice={...vCfg(),src:val('s_vsrc')||'rec',greet:val('s_vgreet').trim(),thanks:val('s_vthanks').trim(),rate:+val('s_vrate')||1,autoThanks:!!(document.getElementById('s_vauto')||{}).checked,kaching:!!(document.getElementById('s_vkaching')||{}).checked,v2:true};await putMeta();toast('Suara sapaan disimpan')},
+  async saveVoice(){S.meta.voice={...vCfg(),src:val('s_vsrc')||'rec',greet:val('s_vgreet').trim(),thanks:val('s_vthanks').trim(),rate:+val('s_vrate')||1,autoThanks:!!(document.getElementById('s_vauto')||{}).checked,delay:+val('s_vdelay')||0,kaching:!!(document.getElementById('s_vkaching')||{}).checked,v2:true};await putMeta();toast('Suara sapaan disimpan')},
   testPayVoice(){payChime(true)},
   testVoice(){S.meta.voice={...vCfg(),src:val('s_vsrc')||'rec',greet:val('s_vgreet').trim(),thanks:val('s_vthanks').trim(),rate:+val('s_vrate')||1};say('greet')},
   cdShow(){cdShow()},cdHide(){cdHide()},
@@ -2862,6 +2880,7 @@ const A={
     catch(e){toast('Gagal: '+((e&&e.message)||e))}},
   webSetupSkip(){WEB_SETUP=null;render()},
   webQr(){U.sheet={type:'webqr'};render()},
+  tcNow(){thanksNow()},tcStop(){thanksStop()},
   closeSheet(){U.sheet=null;render()},bgSheet(e,ev){if(ev.target===e){U.sheet=null;render()}},
   newBarang(){U.sheet={type:'barang',isNew:true,b:{id:uid(),nama:'',kode:'',kategori:U.bcat!=='all'?U.bcat:'',harga:'',dasar:'',stok:'',satuan:'pcs'}};render()},
   editBarang(e){const b=S.barang[e.dataset.id];if(!b)return;U.sheet={type:'barang',isNew:false,b:{...b}};render()},
@@ -3027,6 +3046,8 @@ document.addEventListener('change',ev=>{const t=ev.target;
 },true);
 document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.lokpop){try{localStorage.setItem('kasirtoko_lokpop',t.checked?'1':'0')}catch(e){}toast(t.checked?'Peta rak aktif':'Peta rak dimatikan');return}if(t&&t.dataset&&t.dataset.rsc){if(t.checked)delete RS.off[t.dataset.rsc];else RS.off[t.dataset.rsc]=1;rsSave();const tr=t.closest('tr');if(tr)tr.classList.toggle('off',!t.checked);rsRefresh();return}if(t&&t.id==='cek_file'&&t.files&&t.files[0]){cekFromImage(t.files[0]);t.value=''}});
 document.addEventListener('keydown',ev=>{const t=ev.target;
+  if((ev.code==='Space'||ev.key===' ')&&!ev.ctrlKey&&!ev.altKey&&!ev.metaKey&&!ev.repeat&&U.user&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))){
+    ev.preventDefault();try{acGet()}catch(e){}if(TC.t)thanksNow();else thanksStart(+vCfg().delay>0?+vCfg().delay:3);return}
   if(ev.key==='Enter'&&t&&t.dataset&&t.dataset.tbin){ev.preventDefault();A.tbAdd();return}
   if(t&&t.id==='q'&&ev.key==='Enter'&&!ev.isComposing&&ev.keyCode!==229){ev.preventDefault();const q=U.q.trim().toLowerCase();if(!q)return;const list=filterBarang(U.q,U.cat);const exact=list.find(b=>(b.kode||'').toLowerCase()===q)||(list.length===1?list[0]:null);
     if(exact){A.add({dataset:{id:exact.id}});U.q='';render();focusSearch();toast('+1 '+exact.nama)}else if(list.length)toast('Ada '+list.length+' barang, tap salah satu');else A.quickAdd()}
