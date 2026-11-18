@@ -1945,7 +1945,7 @@ async function say(kind){const key=kind==='thanks'?'sayThanks':'sayGreet';const 
 let chimeBusy=false;
 async function payChime(withThanks){const v=vCfg();if(chimeBusy)return;chimeBusy=true;
   try{if(v.kaching){try{await playClip('kaching',null)}catch(e){}}
-    if(withThanks&&v.autoThanks){if(+v.delay>0){thanksStart(+v.delay)}else{await new Promise(r=>setTimeout(r,v.kaching?150:300));await say('thanks')}}}
+    if(withThanks&&v.autoThanks){const dl=+v.delay>0?+v.delay:(Date.now()-(window.__spacePay||0)<4000?3:0);if(dl>0){thanksStart(dl)}else{await new Promise(r=>setTimeout(r,v.kaching?150:300));await say('thanks')}}}
   finally{chimeBusy=false}}
 /* hitung mundur "terima kasih" (spasi: mulai / langsung ucapkan) */
 const TC={t:null,end:0,el:null};
@@ -3047,7 +3047,11 @@ document.addEventListener('change',ev=>{const t=ev.target;
 document.addEventListener('change',ev=>{const t=ev.target;if(t&&t.dataset&&t.dataset.lokpop){try{localStorage.setItem('kasirtoko_lokpop',t.checked?'1':'0')}catch(e){}toast(t.checked?'Peta rak aktif':'Peta rak dimatikan');return}if(t&&t.dataset&&t.dataset.rsc){if(t.checked)delete RS.off[t.dataset.rsc];else RS.off[t.dataset.rsc]=1;rsSave();const tr=t.closest('tr');if(tr)tr.classList.toggle('off',!t.checked);rsRefresh();return}if(t&&t.id==='cek_file'&&t.files&&t.files[0]){cekFromImage(t.files[0]);t.value=''}});
 document.addEventListener('keydown',ev=>{const t=ev.target;
   if((ev.code==='Space'||ev.key===' ')&&!ev.ctrlKey&&!ev.altKey&&!ev.metaKey&&!ev.repeat&&U.user&&!(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))){
-    ev.preventDefault();try{acGet()}catch(e){}if(TC.t)thanksNow();else thanksStart(+vCfg().delay>0?+vCfg().delay:3);return}
+    ev.preventDefault();try{acGet()}catch(e){}if(TC.t){thanksNow();return}
+    if(U.sheet||U.drawer)return;
+    const pb=(U.view==='bayar'||U.view==='keranjang')&&document.querySelector('[data-act=confirm]:not([disabled]),[data-act=mmSelesai]:not([disabled])');
+    if(pb){window.__spacePay=Date.now();pb.click();return}
+    thanksStart(+vCfg().delay>0?+vCfg().delay:3);return}
   if(ev.key==='Enter'&&t&&t.dataset&&t.dataset.tbin){ev.preventDefault();A.tbAdd();return}
   if(t&&t.id==='q'&&ev.key==='Enter'&&!ev.isComposing&&ev.keyCode!==229){ev.preventDefault();const q=U.q.trim().toLowerCase();if(!q)return;const list=filterBarang(U.q,U.cat);const exact=list.find(b=>(b.kode||'').toLowerCase()===q)||(list.length===1?list[0]:null);
     if(exact){A.add({dataset:{id:exact.id}});U.q='';render();focusSearch();toast('+1 '+exact.nama)}else if(list.length)toast('Ada '+list.length+' barang, tap salah satu');else A.quickAdd()}
