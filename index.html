@@ -278,6 +278,25 @@ body.wide #lokpop{left:calc(var(--sideW,220px) + 30%)}
 .tcd{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);z-index:9997;display:flex;align-items:center;gap:8px;background:rgba(20,38,26,.92);color:#fff;border-radius:22px;padding:6px 6px 6px 14px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap}
 .tcd b{font-weight:600}
 .tcd button{border:0;border-radius:16px;background:rgba(255,255,255,.16);color:#fff;font:600 12.5px Inter,sans-serif;padding:7px 11px}
+.avimg{object-fit:cover;background:#eef1f0;padding:0}
+.bchk{width:24px;height:24px;border-radius:7px;border:2px solid var(--bd);display:grid;place-items:center;color:transparent;font-weight:800;font-size:14px;flex-shrink:0;margin-right:2px}
+.bchk.on{background:var(--g);border-color:var(--g);color:#fff}
+.row.selr{background:#eef7f0}
+.timg{width:100%;height:84px;object-fit:cover;border-radius:10px;background:#f2f4f2}
+.mmc .mimg{width:100%;height:78px;object-fit:cover;border-radius:10px;background:#f2f4f2}
+.pimg-f{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+.pimg-b{width:92px;height:92px;border-radius:14px;border:1px dashed var(--bd);background:#f6f8f6;display:grid;place-items:center;overflow:hidden;flex-shrink:0;font-size:30px}
+.pimg-b img{width:100%;height:100%;object-fit:cover}
+.vgt .vgs{font-size:12.5px;font-weight:600;color:var(--g)}
+.vgc .msz.s-tb{background:#e5f3e6;color:var(--g)}
+.vgg{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+.vgb{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px 12px 10px;border:2px solid var(--bd);border-radius:14px;background:#fff;text-align:left}
+.vgb b{font-size:22px;line-height:1.1}
+.vgb small{font-size:12px;color:var(--mu);font-weight:600}
+.vgb .p{font-weight:700;color:var(--g);font-size:14px;margin-top:2px}
+.vgb .st{font-size:11.5px;color:var(--mu)}.vgb .st.r{color:var(--red)}
+.vgb.on{border-color:var(--g);background:#eef7f0}.vgb.dim{opacity:.55}
+.vgb .tq{position:absolute;top:-8px;right:-8px}
 .ocr-it{border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fff}
 .ocr-it.off{background:#f6f7f5;opacity:.85}
 .ocr-h{display:flex;gap:10px;align-items:flex-start}
@@ -808,7 +827,7 @@ function render(){
   const _ae=document.activeElement;if(composing&&_ae&&(_ae.tagName==='INPUT'||_ae.tagName==='TEXTAREA')){pendingRender=true;return}
   const ae=document.activeElement;const fid=ae&&ae.id;const sel=fid&&ae.selectionStart;
   const sv=U._lastView;const scr={};['main','pl','prs'].forEach(i=>{const e=document.getElementById(i);if(e)scr[i]=e.scrollTop});
-  const keep={};document.querySelectorAll('.sheet [id], #main [id^="s_"], .wsu [id]').forEach(e=>{if('value'in e)keep[e.id]=e.value});
+  const keep={};document.querySelectorAll('.sheet [id], #main [id^="s_"], .wsu [id]').forEach(e=>{if('value'in e&&e.type!=='file')keep[e.id]=e.value});
   const sameSheet=U.sheet&&U.sheet===U._lastSheet;const sameDrawer=U.drawer&&U._lastDrawer;
   W=calcWide();document.body.classList.toggle('wide',W);if(W)U.drawer=false;
   const v=VIEWS[U.view]||VIEWS.jual;const r=v();
@@ -939,8 +958,40 @@ let favMemo={k:'',v:[]};
 function favList(){const k=Object.keys(S.trx).length+':'+Object.keys(S.barang).length;if(favMemo.k===k)return favMemo.v;const c={},since=Date.now()-60*864e5;
   Object.values(S.trx).forEach(x=>{if(x.status==='batal'||x.waktu<since)return;(x.items||[]).forEach(i=>{if(i.bid&&S.barang[i.bid])c[i.bid]=(c[i.bid]||0)+(i.tb?1:(+i.qty||1))})});
   const v=Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([id])=>S.barang[id]);favMemo={k,v};return v}
-function tilesHTML(list){return list.length?'<div class="tiles">'+list.map(b=>{const q=isTb(b)?U.extra.filter(e=>e.tb&&e.bid===b.id).length:(U.cart[b.id]||0);const habis=!isJasa(b)&&(+b.stok||0)<=0;
-  return `<button class="tile${habis?' dim':''}${q?' inc':''}" data-act="add" data-id="${b.id}">${q?`<span class="tq">${q}</span>`:''}<span class="tnm">${hl(b.nama,U.q)}</span><span class="tpr">${rp(b.harga)}${isTb(b)?'<small>/kg</small>':''}</span>${isTb(b)?'<span class="tst">⚖ ditimbang</span>':habis?'<span class="tst r">stok habis</span>':''}</button>`}).join('')+'</div>':`<div class="empty" style="font-size:16px">Barang "${esc(U.q||U.letter||'')}" gak ketemu<br><br><button class="btn" style="width:auto" data-act="quickAdd">＋ Tambah barang baru</button></div>`}
+function tilesHTML(list){list=vgCollapse(list);return list.length?'<div class="tiles">'+list.map(b=>{if(b.vg)return vgTile(b.vg);const q=isTb(b)?U.extra.filter(e=>e.tb&&e.bid===b.id).length:(U.cart[b.id]||0);const habis=!isJasa(b)&&(+b.stok||0)<=0;
+  return `<button class="tile${habis?' dim':''}${q?' inc':''}" data-act="add" data-id="${b.id}">${q?`<span class="tq">${q}</span>`:''}${b.img?`<img class="timg" src="${esc(b.img)}" loading="lazy" alt="">`:''}<span class="tnm">${hl(b.nama,U.q)}</span><span class="tpr">${rp(b.harga)}${isTb(b)?'<small>/kg</small>':''}</span>${isTb(b)?'<span class="tst">⚖ ditimbang</span>':habis?'<span class="tst r">stok habis</span>':''}</button>`}).join('')+'</div>':`<div class="empty" style="font-size:16px">Barang "${esc(U.q||U.letter||'')}" gak ketemu<br><br><button class="btn" style="width:auto" data-act="quickAdd">＋ Tambah barang baru</button></div>`}
+/* ===== Grup varian (MCB / Lampu / Pipa…): 1 kartu → pilih merk & ukuran ===== */
+const VG_RE=[
+  {u:'A',re:/(\d+(?:[.,]\d+)?)\s*a(?:mp(?:ere)?)?(?![a-z])/i},
+  {u:'W',re:/(\d+(?:[.,]\d+)?)\s*(?:w|watt)(?![a-z])/i},
+  {u:'in',re:/(\d+\s+\d\/\d|\d\/\d|\d+(?:[.,]\d+)?)\s*(?:"|''|”|inch|inc|in(?![a-z]))(?:\s*x\s*(\d+\s+\d\/\d|\d\/\d|\d+(?:[.,]\d+)?)\s*(?:"|''|”|inch)?)?/i}];
+const vgNum=s=>{s=String(s).trim().replace(',','.');const m=s.match(/^(\d+)\s+(\d)\/(\d)$/);if(m)return +m[1]+m[2]/m[3];const f=s.match(/^(\d)\/(\d)$/);if(f)return f[1]/f[2];return parseFloat(s)||0};
+let vgMemo={k:'',v:null};
+function vgInfo(){const all=Object.values(S.barang);const k=all.length+':'+all.reduce((a,b)=>a+String(b.nama||'').length+(b.img?1:0),0);if(vgMemo.k===k)return vgMemo.v;
+  const it={},fam={};
+  all.forEach(b=>{if(isTb(b))return;const nm=String(b.nama||'');for(const r of VG_RE){const m=nm.match(r.re);if(!m)continue;
+    let lab=r.u==='in'?(m[1].trim()+'"'+(m[2]?' x '+m[2].trim()+'"':'')):(m[1].replace('.',',')+r.u);
+    const base=nm.replace(m[0],' ').replace(/[\s\-–]+$/,'').replace(/\s+/g,' ').trim();if(!base)break;
+    const w=base.split(' ');const famN=w[0];const merk=w.slice(1).join(' ');const key=famN.toLowerCase()+'|'+r.u;
+    it[b.id]={key,fam:famN,merk,lab,v:vgNum(m[1])+(m[2]?vgNum(m[2])/1000:0)};(fam[key]=fam[key]||[]).push(b.id);break}});
+  Object.keys(it).forEach(id=>{if(fam[it[id].key].length<2)delete it[id]});
+  vgMemo={k,v:{it,fam}};return vgMemo.v}
+function vgCollapse(list){const {it}=vgInfo();const cnt={};list.forEach(b=>{const x=it[b.id];if(x)cnt[x.key]=(cnt[x.key]||0)+1});
+  const seen={},out=[];list.forEach(b=>{const x=it[b.id];if(x&&cnt[x.key]>=2){if(seen[x.key])return;seen[x.key]=1;out.push({vg:x.key})}else out.push(b)});return out}
+function vgMembers(key){const {it,fam}=vgInfo();return (fam[key]||[]).map(id=>S.barang[id]).filter(Boolean).sort((a,b)=>it[a.id].v-it[b.id].v||String(it[a.id].merk).localeCompare(it[b.id].merk))}
+function vgSum(key){const ms=vgMembers(key),{it}=vgInfo();const pr=ms.map(b=>+b.harga||0).filter(Boolean);const mk={};ms.forEach(b=>{const m=it[b.id].merk;if(m&&!mk[m.toLowerCase()])mk[m.toLowerCase()]=m});const merks=Object.values(mk);
+  const q=ms.reduce((a,b)=>a+(U.cart[b.id]||0),0);const img=(ms.find(b=>b.img)||{}).img;const fam=ms.length?it[ms[0].id].fam:key;
+  const mn=Math.min(...pr),mx=Math.max(...pr);return{ms,merks,q,img,fam,price:pr.length?(mn===mx?rp(mn):rp(mn)+' – '+fmt(mx)):'',sub:ms.length+' pilihan'+(merks.length>1?' · '+merks.length+' merk':'')}}
+function vgTile(key){const s=vgSum(key);return `<button class="tile vgt${s.q?' inc':''}" data-act="vgOpen" data-k="${esc(key)}">${s.q?`<span class="tq">${s.q}</span>`:''}${s.img?`<img class="timg" src="${esc(s.img)}" loading="lazy" alt="">`:''}<span class="tnm">${esc(s.fam)}</span><span class="vgs">${esc(s.sub)} ›</span><span class="tpr">${s.price}</span></button>`}
+function vgRow(key){const s=vgSum(key);return `<div class="row" data-act="vgOpen" data-k="${esc(key)}">${s.q?`<span class="qbadge">${s.q}</span>`:''}${s.img?`<img class="av avimg" src="${esc(s.img)}" alt="">`:`<div class="av">${esc(ini(s.fam))}</div>`}<div style="flex:1;min-width:0"><div class="nm">${esc(s.fam)}</div><div class="sub"><b style="color:var(--g)">${esc(s.sub)}</b> • ${s.price}</div></div>${I.chev}</div>`}
+function vgCard(key){const s=vgSum(key);return `<button class="mmc vgc${s.q?' on':''}${s.img?' hasimg':''}" data-act="vgOpen" data-k="${esc(key)}">${s.q?`<span class="mq">${s.q}</span>`:''}${s.img?`<img class="mimg" src="${esc(s.img)}" loading="lazy" alt="">`:''}<span class="mn">${esc(s.fam)}</span><span class="msz s-tb">${esc(s.sub)}</span><span class="mp">${s.price}</span></button>`}
+function vgSheetHTML(st){const s=vgSum(st.k),{it}=vgInfo();const simple=isSimple();
+  const list=s.ms.filter(b=>!st.m||it[b.id].merk.toLowerCase()===st.m.toLowerCase());
+  return `<h2>${esc(s.fam)}</h2><div class="bd">
+  ${s.merks.length>1?`<div class="sub" style="margin-bottom:6px">Merk</div><div class="chips vgm" style="padding:0 0 10px;flex-wrap:wrap"><button class="chip ${!st.m?'on':''}" data-act="vgMerk" data-m="">Semua</button>${s.merks.map(m=>`<button class="chip ${st.m===m?'on':''}" data-act="vgMerk" data-m="${esc(m)}">${esc(m)}</button>`).join('')}</div>`:''}
+  <div class="sub" style="margin-bottom:6px">Pilih ukuran</div>
+  <div class="vgg">${list.map(b=>{const x=it[b.id],q=U.cart[b.id]||0,habis=!isJasa(b)&&(+b.stok||0)<=0;return `<button class="vgb${q?' on':''}${habis&&!simple?' dim':''}" data-act="vgAdd" data-id="${b.id}">${q?`<span class="tq">${q}</span>`:''}<b>${esc(x.lab)}</b>${!st.m&&s.merks.length>1&&x.merk?`<small>${esc(x.merk)}</small>`:''}<span class="p">${rp(b.harga)}</span>${simple?'':`<span class="st${habis?' r':''}">${isJasa(b)?'∞':habis?'habis':'sisa '+(+b.stok||0)}</span>`}</button>`}).join('')}</div>
+  <button class="btn" style="margin-top:14px" data-act="closeSheet">Selesai${s.q?' · '+s.q+' di keranjang':''}</button></div>`}
 /* ===== MODE MAMA (kasir simpel) ===== */
 let mmMemo={k:'',v:{}};
 function mmSizeVal(n){const m=String(n).match(/(\d+(?:[.,]\d+)?)\s*(ml|cc|ltr|lt|liter|l|gram|gr|g|kg|ons)(?![a-z])/i);if(!m)return null;let v=parseFloat(m[1].replace(',','.'));const u=m[2].toLowerCase();
@@ -956,12 +1007,12 @@ function mmInfo(){const all=Object.values(S.barang);const k=all.length+':'+all.r
 const mmI=b=>(b&&mmInfo()[b.id])||{base:b?b.nama:'',lab:''};
 function mmSzIcon(i,n){let h='';for(let k=0;k<Math.min(n,5);k++){const on=Math.round(i*(Math.min(n,5)-1)/Math.max(1,n-1))===k;h+=`<i style="height:${6+k*3}px" class="${on?'on':''}"></i>`}return `<span class="mszi">${h}</span>`}
 function mmCard(b){const f=mmI(b);const q=isTb(b)?U.extra.filter(e=>e.tb&&e.bid===b.id).length:(U.cart[b.id]||0);
-  return `<button class="mmc${q?' on':''}" data-act="add" data-id="${b.id}">${q?`<span class="mq">${q}</span>`:''}<span class="mn">${hl(f.base,U.q)}</span>${f.lab?`<span class="msz s-${f.lab}">${mmSzIcon(f.rank,f.n)}${f.lab}</span>`:isTb(b)?'<span class="msz s-tb">⚖ ditimbang</span>':''}<span class="mp">${rp(b.harga)}${isTb(b)?'<small>/kg</small>':''}</span></button>`}
+  return `<button class="mmc${q?' on':''}${b.img?' hasimg':''}" data-act="add" data-id="${b.id}">${q?`<span class="mq">${q}</span>`:''}${b.img?`<img class="mimg" src="${esc(b.img)}" loading="lazy" alt="">`:''}<span class="mn">${hl(f.base,U.q)}</span>${f.lab?`<span class="msz s-${f.lab}">${mmSzIcon(f.rank,f.n)}${f.lab}</span>`:isTb(b)?'<span class="msz s-tb">⚖ ditimbang</span>':''}<span class="mp">${rp(b.harga)}${isTb(b)?'<small>/kg</small>':''}</span></button>`}
 function simpleListHTML(){const q=(U.q||'').trim();const info=mmInfo();let list=filterBarang(q,'all');
   const srt=(a,b)=>{const x=info[a.id]||{},y=info[b.id]||{};return String(x.base||a.nama).localeCompare(String(y.base||b.nama))||(x.size||0)-(y.size||0)};
   let out;if(!q&&(U.mtab||'sering')==='sering'){const f=favList().filter(Boolean);out=f.length>=12?f:f.concat(list.slice().sort(srt).filter(b=>!f.includes(b)).slice(0,24-f.length))}else out=q?list:list.slice().sort(srt);
   if(!out.length)return `<div class="mmempty" style="padding:28px 16px">Barang "${esc(q)}" gak ketemu<br><br><button class="mmpay" style="width:auto;padding:0 24px;height:54px;font-size:17px" data-act="mmBaru">＋ Tambah "${esc(q)}" ke pesanan</button></div>`;
-  return '<div class="mmg">'+out.map(mmCard).join('')+'</div>'+(q?`<button class="mmadd" data-act="mmBaru">Gak ada yang pas? ＋ Tambah "${esc(q)}" sebagai barang baru</button>`:(U.mtab||'sering')==='sering'?'<button class="mmadd" data-act="mmTab" data-v="semua">Lihat semua barang →</button>':'')}
+  return '<div class="mmg">'+vgCollapse(out).map(b=>b.vg?vgCard(b.vg):mmCard(b)).join('')+'</div>'+(q?`<button class="mmadd" data-act="mmBaru">Gak ada yang pas? ＋ Tambah "${esc(q)}" sebagai barang baru</button>`:(U.mtab||'sering')==='sering'?'<button class="mmadd" data-act="mmTab" data-v="semua">Lihat semua barang →</button>':'')}
 function mmLines(t){return t.l.map(x=>{const b=x.tb||x.biaya||x.manual?null:S.barang[x.id];const f=b?mmI(b):null;const nm=f?f.base:x.nama;
   const ctl=x.tb?`<span class="mmw">⚖ ${beratLabel(x.kg)}</span>`:`<div class="mmqty"><button data-act="${b?'dec':'mxq'}" data-id="${x.id}" data-d="-1">−</button><b>${x.qty}</b><button data-act="${b?'inc':'mxq'}" data-id="${x.id}" data-d="1">+</button></div>`;
   return `<div class="mml"><div class="mmln"><b>${esc(nm)}</b>${f&&f.lab?`<span class="msz s-${f.lab}">${f.lab}</span>`:''}${x.manual?'<span class="msz s-new">barang baru</span>':''}</div>${ctl}<div class="mmlp">${rp(x.qty*x.harga)}</div><button class="mmx" data-act="rm" data-id="${x.id}" aria-label="Hapus">✕</button></div>`}).join('')}
@@ -1038,8 +1089,16 @@ let lokT=null;
 function lokPop(b){if(!lokPopOn())return;const p=lokParse(lokCode(b));if(!p)return;let el=document.getElementById('lokpop');if(!el){el=document.createElement('div');el.id='lokpop';document.body.appendChild(el)}
   const c=RAK_COL[p.rak];el.innerHTML=`<div class="lk-h"><span class="lk-b" style="background:${c}">${p.rak==='LT'?'LANTAI':'RAK '+p.rak}</span>${p.rak!=='LT'&&p.baris?`<span class="lk-r">Baris <b>${p.baris}</b> <small>dari atas</small></span>`:p.rak==='LT'?'<span class="lk-r">area bubuk</span>':''}</div><div class="lk-n">${esc(b.nama)}</div><div class="lk-g"><div class="lk-m">${lokMapSVG(p.rak)}</div>${p.rak==='LT'||p.baris?`<div class="lk-e">${lokRowsSVG(p.rak,p.baris)}</div>`:''}</div>`;
   el.classList.remove('on');void el.offsetWidth;el.classList.add('on');clearTimeout(lokT);lokT=setTimeout(()=>el.classList.remove('on'),3200)}
-function jualRowsHTML(list){if(isSimple())return simpleListHTML();return quickAddRow(list)+(list.length?'<div class="list">'+list.map(b=>{const q=U.cart[b.id]||0;const habis=!isJasa(b)&&(+b.stok||0)<=0;const tbq=isTb(b)?U.extra.filter(e=>e.tb&&e.bid===b.id).length:0;return `<div class="row ${habis?'dim':''}" data-act="add" data-id="${b.id}">${tbq?`<span class="qbadge">${tbq}</span>`:''}${q?`<span class="qbadge">${q}</span>`:''}<div class="av">${esc(ini(b.nama))}</div><div style="flex:1;min-width:0"><div class="nm">${hl(b.nama,U.q)}</div><div class="sub">${isTb(b)?`<b style="color:var(--g)">⚖ ditimbang</b> • ${rp(b.harga)}/kg${tbUk(b).length?' • '+tbUk(b).length+' ukuran':''}`:`${isJasa(b)?'<b style="color:var(--g)">Jasa/∞</b>':'sisa '+(+b.stok||0)} • ${rp(b.harga)}`}${lokCode(b)?' • <b>📍 '+esc(lokShort(b))+'</b>':''}</div></div>${q?`<button class="minus" data-act="dec" data-id="${b.id}">−</button>`:''}</div>`}).join('')+'</div>':`<div class="empty">${Object.keys(S.barang).length?'Barang "'+esc(U.q)+'" gak ketemu':'Belum ada barang.<br><br><button class="btn" style="width:auto" data-go="barang">Tambah Barang</button>'}</div>`)}
-function barangRowsHTML(list){return list.map(b=>{const low=isLow(b);return `<div class="row" data-act="editBarang" data-id="${b.id}"><div class="av">${esc(ini(b.nama))}</div><div style="flex:1;min-width:0"><div class="nm">${hl(b.nama,U.bq)}</div><div class="sub">${esc(b.kode||'—')}${b.kategori?' • '+esc(b.kategori):''}${lokCode(b)?' • 📍 '+esc(lokLabel(b)):''}</div><span class="tag">Hrg Dasar ${rp(b.dasar)}</span>${isJasa(b)?' <span class="tag gr">Jasa</span>':''}</div><div style="text-align:right"><div style="font-weight:600;color:${low?'var(--red)':'var(--g)'}">${isJasa(b)?'∞':(+b.stok||0)}</div><div class="sub">${rp(b.harga)}</div></div></div>`}).join('')||`<div class="empty">${U.bq?'Barang gak ketemu':'Belum ada barang'}</div>`}
+function jualRowsHTML(list){if(isSimple())return simpleListHTML();const L0=list;list=vgCollapse(list);return quickAddRow(L0)+(list.length?'<div class="list">'+list.map(b=>{if(b.vg)return vgRow(b.vg);const q=U.cart[b.id]||0;const habis=!isJasa(b)&&(+b.stok||0)<=0;const tbq=isTb(b)?U.extra.filter(e=>e.tb&&e.bid===b.id).length:0;return `<div class="row ${habis?'dim':''}" data-act="add" data-id="${b.id}">${tbq?`<span class="qbadge">${tbq}</span>`:''}${q?`<span class="qbadge">${q}</span>`:''}${pAv(b)}<div style="flex:1;min-width:0"><div class="nm">${hl(b.nama,U.q)}</div><div class="sub">${isTb(b)?`<b style="color:var(--g)">⚖ ditimbang</b> • ${rp(b.harga)}/kg${tbUk(b).length?' • '+tbUk(b).length+' ukuran':''}`:`${isJasa(b)?'<b style="color:var(--g)">Jasa/∞</b>':'sisa '+(+b.stok||0)} • ${rp(b.harga)}`}${lokCode(b)?' • <b>📍 '+esc(lokShort(b))+'</b>':''}</div></div>${q?`<button class="minus" data-act="dec" data-id="${b.id}">−</button>`:''}</div>`}).join('')+'</div>':`<div class="empty">${Object.keys(S.barang).length?'Barang "'+esc(U.q)+'" gak ketemu':'Belum ada barang.<br><br><button class="btn" style="width:auto" data-go="barang">Tambah Barang</button>'}</div>`)}
+function pAv(b){return b.img?`<img class="av avimg" src="${esc(b.img)}" loading="lazy" alt="">`:`<div class="av">${esc(ini(b.nama))}</div>`}
+async function prodImgPrep(file,mx){const url=URL.createObjectURL(file);try{const img=await loadImg(url);const k=Math.min(1,mx/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c}finally{URL.revokeObjectURL(url)}}
+async function prodImgSet(file){const s=U.sheet;if(!s||s.type!=='barang')return;const b=s.b;s.imgBusy=true;render();
+  try{if(cloudOn()){const c=await prodImgPrep(file,700);const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.82));
+      const name='p-'+b.id+'-'+Math.random().toString(36).slice(2,8)+'.jpg';b.img=await nqUpload(blob,name);toast('Foto tersimpan di cloud ✓')}
+    else{const c=await prodImgPrep(file,260);b.img=c.toDataURL('image/jpeg',.72);toast('Foto disimpan di perangkat ini aja (cloud belum nyala)')}}
+  catch(e){toast('Gagal upload foto: '+((e&&e.message)||e)+(/bucket|policy|row-level|404|403/i.test(String(e&&e.message))?' — jalankan SQL QR nota dulu (menu Layar Pelanggan)':''))}
+  if(U.sheet===s){s.imgBusy=false;render()}}
+function barangRowsHTML(list){const sel=U.bsel;return list.map(b=>{const low=isLow(b);return `<div class="row${sel&&sel.has(b.id)?' selr':''}" data-act="${sel?'bselTog':'editBarang'}" data-id="${b.id}">${sel?`<span class="bchk${sel.has(b.id)?' on':''}">✓</span>`:''}${pAv(b)}<div style="flex:1;min-width:0"><div class="nm">${hl(b.nama,U.bq)}</div><div class="sub">${esc(b.kode||'—')}${b.kategori?' • '+esc(b.kategori):''}${lokCode(b)?' • 📍 '+esc(lokLabel(b)):''}</div><span class="tag">Hrg Dasar ${rp(b.dasar)}</span>${isJasa(b)?' <span class="tag gr">Jasa</span>':''}</div><div style="text-align:right"><div style="font-weight:600;color:${low?'var(--red)':'var(--g)'}">${isJasa(b)?'∞':(+b.stok||0)}</div><div class="sub">${rp(b.harga)}</div></div></div>`}).join('')||`<div class="empty">${U.bq?'Barang gak ketemu':'Belum ada barang'}</div>`}
 function hl(name,q){const n=String(name||'');const toks=norm(q).split(' ').filter(Boolean);if(!toks.length)return esc(n);const low=n.toLowerCase();const marks=new Array(n.length).fill(false);toks.forEach(t=>{let i=low.indexOf(t);while(i>=0&&t){for(let j=i;j<i+t.length;j++)marks[j]=true;i=low.indexOf(t,i+t.length)}});let o='',on=false;for(let i=0;i<n.length;i++){if(marks[i]&&!on){o+='<mark>';on=true}if(!marks[i]&&on){o+='</mark>';on=false}o+=esc(n[i])}if(on)o+='</mark>';return o}
 
 function cartBody(t,compact){
@@ -1107,7 +1166,11 @@ sukses(){
 },
 barang(){
   const list=filterBarang(U.bq,U.bcat);
-  return{top:`<button class="ib" data-act="openDrawer">${I.menu}</button><h1>Barang <span class="sub" style="font-weight:500">${Object.keys(S.barang).length} item</span></h1><button class="pill" data-act="importOpen">⬆ Import Excel</button><input type="file" id="impFile" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">`,
+  if(U.bsel){const n=U.bsel.size,all=list.length&&list.every(b=>U.bsel.has(b.id));
+    return{top:`<button class="ib" data-act="bselOff">✕</button><h1>${n} dipilih</h1><button class="pill" data-act="bselAll">${all?'Batal pilih semua':'Pilih semua ('+list.length+')'}</button>`,
+    body:`<div class="search"><div class="sbox">${I.search}<input id="bq" type="search" placeholder="Cari nama atau kode barang" value="${esc(U.bq)}" data-in="bq" autocomplete="off"></div></div>${catChips(U.bcat,'bcat')}<div id="blist">${barangRowsHTML(list)}</div><div style="height:16px"></div>`,
+    foot:`<button class="btn r" data-act="bselDel" ${n?'':'disabled'}>Hapus ${n} barang</button>`}}
+  return{top:`<button class="ib" data-act="openDrawer">${I.menu}</button><h1>Barang <span class="sub" style="font-weight:500">${Object.keys(S.barang).length} item</span></h1><button class="pill" data-act="bselOn">☑ Pilih</button><button class="pill" data-act="importOpen">⬆ Import Excel</button><input type="file" id="impFile" accept=".xls,.xlsx,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display:none">`,
   body:`${pakuOldBanner()}<div class="search"><div class="sbox">${I.search}<input id="bq" type="search" placeholder="Cari nama atau kode barang" value="${esc(U.bq)}" data-in="bq" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div></div>${catChips(U.bcat,'bcat')}
   <div id="blist">${barangRowsHTML(list)}</div><div style="height:16px"></div>`,
   foot:`<button class="btn" data-act="newBarang">Tambah Barang</button>`};
@@ -1124,7 +1187,7 @@ stok(){
   return{top:`<button class="ib" data-act="openDrawer">${I.menu}</button><h1>Manajemen Stok</h1>`,
   body:`<div class="stat"><div class="s"><div class="l">Nilai stok (modal)</div><div class="v">${rp(nilai)}</div></div><div class="s"><div class="l">Stok menipis (≤${min})</div><div class="v" style="color:${low.length?'var(--red)':'inherit'}">${low.length} item</div></div></div>
   <div class="sec">Urut dari stok paling sedikit</div>
-  ${list.map(b=>`<div class="row" data-act="adjStok" data-id="${b.id}"><div class="av">${esc(ini(b.nama))}</div><div style="flex:1;min-width:0"><div class="nm">${esc(b.nama)}</div>${lokCode(b)?'<span class="sub">📍 '+esc(lokShort(b))+' </span>':''}${(+b.stok||0)<=0?'<span class="tag red">Habis</span>':isLow(b)?'<span class="tag or">Menipis</span>':''}</div><div style="font-weight:700;font-size:16px;color:${isLow(b)?'var(--red)':'var(--g)'}">${+b.stok||0}</div></div>`).join('')||'<div class="empty">Belum ada barang</div>'}`};
+  ${list.map(b=>`<div class="row" data-act="adjStok" data-id="${b.id}">${pAv(b)}<div style="flex:1;min-width:0"><div class="nm">${esc(b.nama)}</div>${lokCode(b)?'<span class="sub">📍 '+esc(lokShort(b))+' </span>':''}${(+b.stok||0)<=0?'<span class="tag red">Habis</span>':isLow(b)?'<span class="tag or">Menipis</span>':''}</div><div style="font-weight:700;font-size:16px;color:${isLow(b)?'var(--red)':'var(--g)'}">${+b.stok||0}</div></div>`).join('')||'<div class="empty">Belum ada barang</div>'}`};
 },
 beli(){
   let list=Object.values(S.beli).sort((a,b)=>b.waktu-a.waktu);
@@ -2512,6 +2575,10 @@ async function exportXlsx(){
 function sheetHTML(){
   const s=U.sheet;let h='';
   if(s.type==='barang'){const b=s.b;h=`<h2>${s.isNew?'Tambah Barang':'Edit Barang'}</h2><div class="bd">
+  <div class="pimg-f"><div class="pimg-b">${s.imgBusy?'<div class="sub">Upload…</div>':b.img?`<img src="${esc(b.img)}" alt="">`:'<span>📷</span>'}</div>
+    <div style="flex:1"><div style="font-weight:600">Foto produk</div><div class="sub">${cloudOn()?'Disimpan di cloud, muncul juga di tablet & HP lain.':'Cloud belum nyala, foto cuma di perangkat ini.'}</div>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="pill" data-act="pimgPick" ${s.imgBusy?'disabled':''}>${b.img?'Ganti foto':'Tambah foto'}</button>${b.img?'<button class="pill" data-act="pimgDel">Hapus foto</button>':''}</div></div>
+    <input type="file" id="pimg_file" accept="image/*" style="display:none"></div>
   <div class="fld"><label>Nama barang *</label><input id="f_nama" value="${esc(b.nama)}"></div>
   <div class="fld"><label>Kode / barcode</label><input id="f_kode" value="${esc(b.kode)}"></div>
   <div class="fld"><label>Kategori</label><select id="f_kat"><option value="">— tanpa kategori —</option>${(S.meta.kategori||[]).map(c=>`<option ${b.kategori===c?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
@@ -2590,6 +2657,7 @@ function sheetHTML(){
     <div class="sub">Habis tersambung: tekan <b>Bagikan</b> → <b>Tambah ke Layar Utama</b>, biar jadi ikon app di iPhone.</div>
     <div class="sub" style="margin-top:8px;color:var(--rd,#c62828)">QR ini berisi alamat & kunci cloud toko (tanpa password). Jangan disebar ke orang lain.</div>
     <button class="btn o" style="margin-top:12px" data-act="closeSheet">Tutup</button></div>`;
+  else if(s.type==='vg')h=vgSheetHTML(s);
   else if(s.type==='ocr')h=ocrSheetHTML(s);
   else if(s.type==='saran')h=saranSheetHTML(s);
   else if(s.type==='titip'||s.type==='ambil'){const t=S.trx[s.id];const it=s.items;const isA=s.type==='ambil';
@@ -2881,11 +2949,21 @@ const A={
   webSetupSkip(){WEB_SETUP=null;render()},
   webQr(){U.sheet={type:'webqr'};render()},
   tcNow(){thanksNow()},tcStop(){thanksStop()},
+  pimgPick(){const f=document.getElementById('pimg_file');if(f){f.value='';f.click()}},
+  pimgDel(){const s=U.sheet;if(s&&s.b){s.b.img='';render()}},
+  bselOn(){U.bsel=new Set();render()},bselOff(){U.bsel=null;render()},
+  bselTog(e){const id=e.dataset.id;U.bsel.has(id)?U.bsel.delete(id):U.bsel.add(id);render()},
+  bselAll(){const list=filterBarang(U.bq,U.bcat);const all=list.every(b=>U.bsel.has(b.id));list.forEach(b=>all?U.bsel.delete(b.id):U.bsel.add(b.id));render()},
+  bselDel(){const ids=[...U.bsel].filter(id=>S.barang[id]);if(!ids.length)return;const nm=ids.slice(0,3).map(id=>S.barang[id].nama).join(', ')+(ids.length>3?' dan '+(ids.length-3)+' lainnya':'');
+    ask('Hapus '+ids.length+' barang?',nm+' bakal dihapus dari daftar. Riwayat transaksi tetap aman.','Hapus '+ids.length,async()=>{toast('Menghapus '+ids.length+' barang…');for(const id of ids){try{await delBarang(id)}catch(e){}}U.bsel=null;render();toast(ids.length+' barang dihapus')})},
+  vgOpen(e){const k=e.dataset.k;const {it}=vgInfo();const q=norm(U.q);const s=vgSum(k);const m=s.merks.find(mm=>q&&q.split(' ').some(t=>t.length>=3&&norm(mm).includes(t)))||'';U.sheet={type:'vg',k,m};render()},
+  vgMerk(e){U.sheet.m=e.dataset.m;render()},
+  vgAdd(e){const st=U.sheet;A.add({dataset:{id:e.dataset.id}});if(U.view==='jual')U.q='';U.sheet=st;render()},
   closeSheet(){U.sheet=null;render()},bgSheet(e,ev){if(ev.target===e){U.sheet=null;render()}},
   newBarang(){U.sheet={type:'barang',isNew:true,b:{id:uid(),nama:'',kode:'',kategori:U.bcat!=='all'?U.bcat:'',harga:'',dasar:'',stok:'',satuan:'pcs'}};render()},
   editBarang(e){const b=S.barang[e.dataset.id];if(!b)return;U.sheet={type:'barang',isNew:false,b:{...b}};render()},
   saveBarang(){const b=U.sheet.b;const nama=val('f_nama').trim();if(!nama){toast('Nama barang wajib diisi');return}
-    const nb={id:b.id,nama,kode:val('f_kode').trim(),kategori:val('f_kat'),harga:num(val('f_harga')),dasar:num(val('f_dasar')),stok:num(val('f_stok')),satuan:val('f_sat').trim()||'pcs',rak:(()=>{const k=val('f_rk'),r=val('f_rb');return k==='LT'?'LT':k?k+(r||''):''})(),minStok:num(val('f_min')),jasa:!!(document.getElementById('f_jasa')||{}).checked};
+    const nb={...b,timbang:false,ukuran:undefined,tbStok:undefined,id:b.id,nama,kode:val('f_kode').trim(),kategori:val('f_kat'),harga:num(val('f_harga')),dasar:num(val('f_dasar')),stok:num(val('f_stok')),satuan:val('f_sat').trim()||'pcs',rak:(()=>{const k=val('f_rk'),r=val('f_rb');return k==='LT'?'LT':k?k+(r||''):''})(),minStok:num(val('f_min')),jasa:!!(document.getElementById('f_jasa')||{}).checked};
     nb.rakSet=nb.rak!==lokAuto(nb);if(!nb.rakSet)nb.rak=lokAuto(nb);
     if((document.getElementById('f_tb')||{}).checked){nb.timbang=true;nb.ukuran=val('f_uk').split(',').map(x=>x.trim()).filter(Boolean);nb.satuan='kg';nb.tbStok=val('f_stok').trim()!=='';nb.stok=nb.tbStok?+String(val('f_stok')).replace(',','.')||0:0}
     const fb=U.sheet.fromBeli,fo=U.sheet.fromOcr;U.sheet=null;if(fb&&U.bf){U.bf.items[nb.id]={qty:1,harga:nb.dasar||0};U.bf.q=''}putBarang(nb);if(fo){const r=fo.st.rows[fo.i];r.bid=nb.id;r.on=true;r.sc=1;r.picked=true;U.sheet=fo.st;render()}toast('Barang disimpan')},
@@ -2988,6 +3066,7 @@ document.addEventListener('click',ev=>{
   const f=A[a.dataset.act];if(f)f(a,ev);
 });
 document.addEventListener('change',ev=>{const t=ev.target;
+  if(t.id==='pimg_file'&&t.files&&t.files[0]){prodImgSet(t.files[0]);return}
   if(t.dataset&&t.dataset.camon){CAM.on=t.checked;camSave();if(CAM.on)camConnect();else{for(const k in CAM.peers)camPeerClose(k);camStopStream();if(!CAM.view)camStop()}render();return}
   if(t.dataset&&t.dataset.camf){CAM.facing=t.value;camSave();if(CAM.stream)camRestartStream();return}
   if(t.id==='ocr_file'&&t.files&&t.files[0]){ocrRun(t.files[0]);return}
